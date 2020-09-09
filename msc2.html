@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MAGE Sprite Creator v2.0</title>
+    <link rel = "stylesheet" href = "stylesheet.css"></link>
+  </head>
+  <body>
+    <div id = "main" class = "noSelect">
+      <div id = "ui" style = "width: 30vw";></div>
+      <div id = "previews" style = "width: 40vw;"></div>
+      <br>
+      <div id = "canvas"><canvas id = "c"></canvas></div>
+    </div>
+
+    <script src = "Canvas.js"></script>
+    <script src = "Color.js"></script>
+    <script src = "PixelGrid.js"></script>
+    <script src = "Palette.js"></script>
+    <script src = "PaletteCache.js"></script>
+    <script src = "InputManager.js"></script>
+    <script src = "Frame.js"></script>
+    <script src = "FrameCache.js"></script>
+
+    <script>
+      const Constants =
+      {
+        NUM_COLORS: 16,
+        PIXELS_PER_SIDE: 16,
+        COLOR_CLEAR: 0x10,
+        MAIN_DIV: document.getElementById('main'),
+        UI_DIV: document.getElementById('ui'),
+        PREVIEW_DIV: document.getElementById('previews'),
+        PREVIEW_SIZE: 50,
+        CreateConst: (o, name, value) =>
+        {
+          Object.defineProperty(o, name, { value, writable: false, enumerable: true, configurable: true });
+        }
+      };
+
+      const Tools =
+      {
+        Arr2d: (w, h, v) =>
+        {
+          return new Array(h).fill(w).map(x => new Array(x).fill(v));
+        },
+        AddUI: e =>
+        {
+          Constants.UI_DIV.appendChild(e);
+        },
+        AddUIBR: (n = 1) =>
+        {
+          for(var i = 0; i < n; i++)
+            Constants.UI_DIV.appendChild(document.createElement('BR'));
+        },
+        AddUILabel: (target, text) =>
+        {
+          const label = document.createElement('LABEL');
+          label.setAttribute('for', target);
+          label.innerText = text;
+          Tools.AddUI(label);
+          return label;
+        },
+        AddUIXBase: (type, attribs, listeners = {}, directs = {}) =>
+        {
+          const element = document.createElement(type);
+          Object.entries(attribs).forEach(([k, v]) => element.setAttribute(k, v));
+          Object.entries(listeners).forEach(([k, v]) => {
+            v = Tools.ToArray(v);
+            v.forEach(fn => element.addEventListener(k, fn, false));
+          });
+          Object.entries(directs).forEach(([k, v]) => element[k] = v);
+          Tools.AddUI(element);
+          return element;
+        },
+        AddUIInput: (attribs, listeners = {}, directs = {}) =>
+        {
+          return Tools.AddUIXBase('INPUT', attribs, listeners, directs);
+        },
+        AddUIButton: (attribs, listeners = {}, directs = {}) =>
+        {
+          return Tools.AddUIXBase('BUTTON', attribs, listeners, directs);
+        },
+        AddPreview: e =>
+        {
+          Constants.PREVIEW_DIV.appendChild(e);
+          return e;
+        },
+        InsertPreview: (e, prev) =>
+        {
+          if(prev)
+          {
+            Constants.PREVIEW_DIV.insertBefore(e, prev);
+            return e;
+          }
+          return Tools.AddPreview(e);
+        },
+        Sleep: ms =>
+        {
+          return new Promise(resolve => setTimeout(resolve, ms));
+        },
+        Clamp: (x, min, max) =>
+        {
+          return Math.min(max, Math.max(x, min));
+        },
+        ToArray: x =>
+        {
+          return (x.constructor === Array ? x : [x]);
+        }
+      }
+
+      let c = new Canvas(document.getElementById("c"), 1, 1, { spsize: 20, grid: true });
+
+      let input = new InputManager(c);
+      //input.AddKeyUp((e, self) => console.log(e.keyCode));
+      //input.AddMouseMove((e, self) => console.log(`${self.mouse.x}, ${self.mouse.y}`));
+
+
+
+      input.AddKeyDown((e, self, user) =>
+      {
+        const { pc, canvas } = user;
+
+        if(e.keyCode >= 48 && e.keyCode <= 48 + 9)
+          pc.SetCurrentColor(e.keyCode - 48);
+        else if(e.keyCode >= 65 && e.keyCode <= 70)
+          pc.SetCurrentColor(e.keyCode - 65 + 10);
+        // ctrl
+        else if(e.keyCode === 17)
+        {
+          const pg = canvas.GetCurrentFrame().grid;
+          palette.selected = canvas.GetPixel(self.mouse.px, self.mouse.py);
+        }
+        // w
+        else if(e.keyCode === 87)
+          canvas.AdvanceCurrentFrame(1);
+        // q
+        else if(e.keyCode === 81)
+          canvas.AdvanceCurrentFrame(-1);
+        // g
+        else if(e.keyCode == 71)
+          canvas.ToggleGrid();
+      }, { canvas: c, pc: c.paletteCache });
+
+
+
+      input.AddMouseDown((e, self, user) =>
+      {
+        const { canvas } = user;
+
+        if(self.mouse.button == 0)
+          canvas.SetPixel(self.mouse);
+        else if(self.mouse.button == 2)
+          canvas.SetPixel(self.mouse, Constants.COLOR_CLEAR);
+        else if(self.mouse.button === 1)
+          canvas.FloodFill(self.mouse);
+      }, { canvas: c });
+
+
+
+      input.AddMouseMove((e, self, user) =>
+      {
+        const { canvas } = user;
+        // lmb
+        if(e.buttons & 0b1)
+          self.mouse.button = 0;
+        // rmb
+        else if(e.buttons & 0b10)
+          self.mouse.button = 2;
+        // scroll
+        else if(e.buttons & 0b100)
+          self.mouse.button = 1;
+        else
+          self.mouse.button = -1;
+
+        // lmb
+        if(self.mouse.button == 0)
+          canvas.SetPixel(self.mouse);
+        // rmb
+        else if(self.mouse.button == 2)
+          canvas.SetPixel(self.mouse, Constants.COLOR_CLEAR);
+      }, { canvas: c });
+    </script>
+  </body>
+</html>
