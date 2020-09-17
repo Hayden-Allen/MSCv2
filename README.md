@@ -1,6 +1,6 @@
 # MAGE Sprite Creator 2
 
-This is the second iteration of the tool used to create sprites for the MAGE engine.
+This is the second iteration of the tool used to create sprites and palettes for the MAGE engine.
 
 ## Overview
 
