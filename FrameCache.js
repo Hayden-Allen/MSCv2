@@ -9,9 +9,36 @@ class FrameCache
 
     this.AddFrame(canvas);
 
-    Tools.AddUIButton({}, { click: (() => this.AddFrame()).bind(this) }, { textContent: 'Add Frame' });
-    Tools.AddUIButton({}, { click: (e => this.RemoveFrame(e)).bind(this) }, { textContent: 'Delete Frame' });
+    const oldAdd = document.getElementById('buttonAddFrame');
+    const newAdd = oldAdd.cloneNode(true);
+    newAdd.addEventListener('click', this.AddFrame.bind(this), false);
+    oldAdd.parentNode.replaceChild(newAdd, oldAdd);
+
+    const oldDelete = document.getElementById('buttonDeleteFrame');
+    const newDelete = oldDelete.cloneNode(true);
+    newDelete.addEventListener('click', (e => this.RemoveFrame(e)).bind(this), false);
+    oldDelete.parentNode.replaceChild(newDelete, oldDelete);
+
+    const oldClear = document.getElementById('buttonClearFrame');
+    const newClear = oldClear.cloneNode(true);
+    newClear.addEventListener('click', this.ClearFrame.bind(this), false);
+    oldClear.parentNode.replaceChild(newClear, oldClear);
+
     Tools.AddUIBR();
+  }
+
+  ClearFrame()
+  {
+    if(confirm('Clear the current frame? YOU CANNOT UNDO THIS.'))
+    {
+      this.frames[this.currentFrame] = new Frame(this.canvas.spritewidth * Constants.PIXELS_PER_SIDE, this.canvas.spriteheight * Constants.PIXELS_PER_SIDE);
+      this.canvas.Draw();
+    }
+  }
+
+  Destroy()
+  {
+    this.display.forEach(d => Constants.PREVIEW_DIV.removeChild(d));
   }
 
   GetCurrentFrame()
@@ -36,8 +63,13 @@ class FrameCache
 
   AddFrame()
   {
+    let newFrame;
+    if(this.currentFrame !== -1)
+      newFrame = this.GetCurrentFrame().Copy();
+    else
+      newFrame = new Frame(this.canvas.spritewidth * Constants.PIXELS_PER_SIDE, this.canvas.spriteheight * Constants.PIXELS_PER_SIDE)
     const index = this.currentFrame + 1;
-    this.frames.splice(index, 0, new Frame(this.canvas.spritewidth * Constants.PIXELS_PER_SIDE, this.canvas.spriteheight * Constants.PIXELS_PER_SIDE));
+    this.frames.splice(index, 0, newFrame);
 
     const button = Tools.AddUIInput(
       { type: 'image', src: this.canvas.c.toDataURL(), class: 'preview', id: index, style: `width: ${Constants.PREVIEW_SIZE}px; height: ${Constants.PREVIEW_SIZE}px;` },
@@ -47,11 +79,14 @@ class FrameCache
           if(this.canvas.initialized)
             this.canvas.Draw();
         }).bind(this)
-      }
+      },
+      { draggable: true }
     );
     this.display.splice(index, 0, Tools.InsertPreview(button, this.display[index]));
     this.display.forEach((e, i) => { e.id = i; e.click(); });
     button.click();
+
+    return this.GetCurrentFrame();
   }
 
   SelectFrame(i)

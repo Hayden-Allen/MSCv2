@@ -1,72 +1,264 @@
 class Canvas
 {
-  constructor(c, w, h, { style = "", spsize = 5, grid = false } = {})
+  constructor(c, w, h, { style = "", spsize = 5, grid = false, nocache = false } = {})
   {
-    c.width = w * Constants.PIXELS_PER_SIDE * spsize;
-    c.height = h * Constants.PIXELS_PER_SIDE * spsize;
+    c.width = w * spsize;
+    c.height = h * spsize;
     c.style = style;
 
     this.c = c;
     this.ctx = this.c.getContext("2d");
-
-    this.preview = document.createElement('CANVAS');
-    this.preview.width = c.width;
-    this.preview.height = c.height;
-    this.previewctx = this.preview.getContext('2d');
-
     this.spsize = spsize;
-    this.grid = undefined;
-    this.spritewidth = w;
-    this.spriteheight = h;
-    this.tilewidth = 1;
-    this.tileheight = 1;
 
+    if(!nocache)
+    {
+      this.preview = document.createElement('CANVAS');
+      this.preview.width = c.width;
+      this.preview.height = c.height;
+      this.previewctx = this.preview.getContext('2d');
 
-    this.frameCache = new FrameCache(this);
-    Tools.AddUILabel('inputFrameTime', 'Time per Frame:');
-    this.frameTime = Tools.AddUIInput(
-      { type: 'number', id: 'inputFrameTime', value: 200, min: 0, max: 65535 },
-      { change: this.UpdateFrameTime.bind(this) }
-    );
-    this.toggleAnimate = Tools.AddUIButton({}, { click: (e => this.ToggleAnimate()).bind(this) }, { textContent: 'Play' });
-    Tools.AddUIBR();
+      this.grid = undefined;
+      this.spritewidth = w / Constants.PIXELS_PER_SIDE;
+      this.spriteheight = h / Constants.PIXELS_PER_SIDE;
+      this.tilewidth = 1;
+      this.tileheight = 1;
 
-    this.paletteCache = new PaletteCache();
+      this.spriteName = document.getElementById('inputSpriteName');
+      document.getElementById('buttonSaveSprite').addEventListener('click', this.Save.bind(this));
+      Tools.AddUIBR();
 
-    Tools.AddUILabel('inputGrid', 'Draw Grid:');
-    this.toggleGrid = Tools.AddUIInput({ type: 'checkbox', id: 'inputGrid', checked: grid }, { change: this.Draw.bind(this) });
-    Tools.AddUIBR();
-    Tools.AddUILabel('inputGridColor', 'Grid Color:');
-    this.gridColor = Tools.AddUIInput({ type: 'color', id: 'inputGridColor', value: '#000000' }, { change: this.CreateGrid.bind(this) });
-    Tools.AddUIBR();
-    Tools.AddUILabel('inputGridAlpha', 'Grid Opacity:');
-    this.gridAlpha = Tools.AddUIInput({ type: 'range', id: 'inputGridAlpha', min: 0, max: 1, step: .001, value: 1, style: 'vertical-align: bottom;' }, { change: this.UpdateGridAlpha.bind(this, true) });
-    this.gridAlphaDisplay = Tools.AddUIInput({ type: 'number', min: 0, max: 1, step: .001, value: 1 }, { change: this.UpdateGridAlpha.bind(this, false) });
-    Tools.AddUIBR();
-    Tools.AddUILabel('inputBackgroundColor', 'Background Color:');
-    this.clearColor = Tools.AddUIInput({ type: 'color', id: 'inputBackgroundColor', value: '#ffffff' }, { change: this.Draw.bind(this) });
-    Tools.AddUIBR();
+      this.spriteFile = document.getElementById('inputSpriteFile');
+      this.spriteFile.addEventListener('change', (e => this.Load(e)).bind(this));
 
-    Tools.AddUILabel('inputWidth', 'Sprite (x, y):');
-    Tools.AddUIInput({ type: 'number', id: 'inputWidth', min: 1, max: 256, value: w }, { change: (e => this.UpdateSize(e, 'width')).bind(this) });
-    Tools.AddUIInput({ type: 'number', min: 1, max: 256, value: h }, { change: (e => this.UpdateSize(e, 'height')).bind(this) });
-    Tools.AddUIBR();
+      this.frameCache = new FrameCache(this);
+      this.frameTime = document.getElementById('inputFrameTime');
+      this.frameTime.addEventListener('change', this.UpdateFrameTime.bind(this));
 
-    Tools.AddUILabel('inputTileWidth', 'Tile (x, y):');
-    Tools.AddUIInput({ type: 'number', id: 'inputTileWidth', min: 1, max: 4, value: w }, { change: (e => this.UpdateTileSize(e, 'width')).bind(this) });
-    Tools.AddUIInput({ type: 'number', min: 1, max: 4, value: w }, { change: (e => this.UpdateTileSize(e, 'height')).bind(this) });
-    Tools.AddUIBR();
+      this.toggleAnimate = document.getElementById('buttonAnimate');
+      this.toggleAnimate.addEventListener('click', (e => this.ToggleAnimate()).bind(this));
 
-    Tools.AddUILabel('inputPixelSize', 'Pixel Size:');
-    Tools.AddUIInput({ type: 'number', id: 'inputPixelSize', value: 20, min: 1, max: 256 }, { change: (e => this.UpdatePixelSize(e)).bind(this) });
-    Tools.AddUIBR(2);
+      this.toggleGrid = document.getElementById('inputDrawGrid');
+      this.toggleGrid.addEventListener('change', this.Draw.bind(this));
+      this.gridColor = document.getElementById('inputGridColor');
+      this.gridColor.addEventListener('change', (() => { this.CreateGrid(); this.Draw(); }).bind(this));
 
+      this.gridAlpha = document.getElementById('inputGridAlpha');
+      this.gridAlpha.addEventListener('change', this.UpdateGridAlpha.bind(this, true));
+      this.gridAlphaDisplay = document.getElementById('inputGridAlphaDisplay');
+      this.gridAlphaDisplay.addEventListener('change', this.UpdateGridAlpha.bind(this, false));
 
-    this.CreateGrid();
+      this.clearColor = document.getElementById('inputBackgroundColor');
+      this.clearColor.addEventListener('change', this.Draw.bind(this));
 
-    this.playing = false;
-    this.lastFrameSwitch = performance.now();
+      document.getElementById('inputSpriteWidth').addEventListener('change', (e => this.UpdateSize(e, 'width')).bind(this));
+      document.getElementById('inputSpriteHeight').addEventListener('change', (e => this.UpdateSize(e, 'height')).bind(this));
+
+      document.getElementById('inputTileWidth').addEventListener('change', (e => this.UpdateTileSize(e, 'width')).bind(this));
+      document.getElementById('inputTileHeight').addEventListener('change', (e => this.UpdateTileSize(e, 'height')).bind(this));
+
+      this.pixelSize = document.getElementById('inputPixelSize');
+      this.pixelSize.addEventListener('change', (e => this.UpdatePixelSize()).bind(this));
+      this.realPixelSize = document.getElementById('buttonRealPixelSize');
+      this.realPixelSize.addEventListener('click', this.ToggleRealPixelSize.bind(this));
+      this.tempPixelSize = this.spsize;
+
+      this.toggleSelect = document.getElementById('inputSelect');
+      this.toggleSelect.addEventListener('change', this.ToggleSelect.bind(this));
+      this.selectMode = document.getElementById('selectSelectMode');
+      this.selectRectStart = undefined;
+      this.selectColor = document.getElementById('inputSelectColor');
+      this.selectColor.addEventListener('change', this.Draw.bind(this));
+      this.selectAlpha = document.getElementById('inputSelectAlpha');
+      this.selectAlpha.addEventListener('change', this.UpdateSelectAlpha.bind(this, false));
+      this.selectAlphaDisplay = document.getElementById('inputSelectAlphaDisplay');
+      this.selectAlphaDisplay.addEventListener('change', this.UpdateSelectAlpha.bind(this, true));
+
+      document.getElementById('buttonFlipX').addEventListener('click', this.FlipX.bind(this));
+      document.getElementById('buttonFlipY').addEventListener('click', this.FlipY.bind(this));
+      this.mirrorX = document.getElementById('inputMirrorX');
+      this.mirrorY = document.getElementById('inputMirrorY');
+
+      this.paletteCache = new PaletteCache(this);
+      this.CreateGrid();
+
+      this.playing = false;
+      this.lastFrameSwitch = performance.now();
+    }
     this.initialized = true;
+
+    this.Clear();
+  }
+
+  ToggleRealPixelSize()
+  {
+    if(this.realPixelSize.checked)
+    {
+      this.tempPixelSize = this.spsize;
+      this.pixelSize.value = Constants.REAL_PIXEL_SIZE;
+    }
+    else
+      this.pixelSize.value = this.tempPixelSize;
+    this.UpdatePixelSize();
+    this.Draw();
+  }
+
+  FlipX()
+  {
+    this.GetCurrentFrame().FlipX();
+    this.Draw();
+  }
+
+  FlipY()
+  {
+    this.GetCurrentFrame().FlipY();
+    this.Draw();
+  }
+
+  SelectColor(mouse)
+  {
+    if(this.paletteCache.currentPalette)
+    {
+      const value = this.GetPixel(mouse.px, mouse.py);
+      if(value !== undefined && value !== Constants.COLOR_CLEAR)
+        this.paletteCache.SetCurrentColor(value, true);
+    }
+  }
+
+  ToggleSelect()
+  {
+    if(!this.toggleSelect.checked)
+    {
+      this.GetCurrentFrame().MergeSelection();
+      this.selectRectStart = undefined;
+    }
+    else
+      this.GetCurrentFrame().PushUndo();
+
+    this.Draw();
+  }
+
+  UpdateSelectAlpha(display)
+  {
+    if(display)
+      this.selectAlpha.value = this.selectAlphaDisplay.value;
+    else
+      this.selectAlphaDisplay.value = this.selectAlpha.value;
+
+    this.Draw();
+  }
+
+  Shift(dx, dy)
+  {
+    if(dx)
+      this.GetCurrentFrame().ShiftX(dx, this.toggleSelect.checked);
+    if(dy)
+      this.GetCurrentFrame().ShiftY(dy, this.toggleSelect.checked);
+
+    this.Draw();
+  }
+
+  Undo()
+  {
+    this.frameCache.GetCurrentFrame().Undo(this);
+  }
+
+  Redo()
+  {
+    this.frameCache.GetCurrentFrame().Redo(this);
+  }
+
+  Save()
+  {
+    let timePerFrame = parseInt(this.frameTime.value);
+    let charMax = 0b11111111;
+
+    let index = 0;
+    let data = new Uint8Array(5 + (16 * 3) + (this.spritewidth * Constants.PIXELS_PER_SIDE * this.spriteheight * Constants.PIXELS_PER_SIDE * this.frameCache.frames.length));
+    data[index++] = this.spritewidth;
+    data[index++] = this.spriteheight;
+    data[index++] = this.frameCache.frames.length;
+    data[index++] = (timePerFrame & (charMax << 8)) >> 8;
+    data[index++] = (timePerFrame & charMax);
+
+    for(var i = 0; i < Constants.NUM_COLORS; i++)
+    {
+      let cur = this.paletteCache.currentPalette.At(i).uint;
+      data[index++] = (cur & (charMax << 16)) >> 16;
+      data[index++] = (cur & (charMax << 8)) >> 8;
+      data[index++] = (cur & charMax);
+    }
+
+    for(var i = 0; i < this.frameCache.frames.length; i++)
+      for(var j = 0; j < this.spriteheight * Constants.PIXELS_PER_SIDE; j++)
+        for(var k = 0; k < this.spritewidth * Constants.PIXELS_PER_SIDE; k++)
+          data[index++] = this.frameCache.frames[i].grid.grid[j][k];
+
+    let file = new Blob([data], { type: 'application/octet-stream' });
+    let a = document.createElement("a"), url = URL.createObjectURL(file);
+    a.href = url;
+    a.download = `${this.spriteName.value}.sprite`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 0);
+  }
+
+  Load(e){
+    if(!confirm('WARNING: Any unsaved progress on the current sprite will be lost. Load anyway?'))
+      return;
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = (e) => {
+      let data = new Uint8Array(e.target.result);
+      let index = 0;
+
+      let width = data[index++];
+      let height = data[index++];
+      let nframes = data[index++];
+      this.frameTime.value = (data[index++] << 8) | data[index++];
+
+      let temp = new Array(16);
+      for(var i = 0; i < 16; i++)
+      {
+        let red = (data[index++] << 16);
+        let green = (data[index++] << 8);
+        let blue = data[index++];
+        temp[i] = new Color(red | green | blue);
+      }
+
+      const name = file.name.substring(0, file.name.indexOf('.'));
+      const palette = new Palette(name, temp)
+      this.paletteCache.AddPalette(palette);
+      this.paletteCache.SetPalette(palette);
+
+      this.frameCache.Destroy();
+      this.frameCache = new FrameCache(this);
+      this.spriteName.value = name;
+      document.getElementById('inputSpriteWidth').value = width;
+      document.getElementById('inputSpriteHeight').value = height;
+      this.UpdateSize({ target: { value: width, min: 1, max: 256 } }, 'width');
+      this.UpdateSize({ target: { value: height, min: 1, max: 256 } }, 'height');
+
+      for(var i = 0; i < nframes; i++){
+        let grid = this.frameCache.GetCurrentFrame().grid.grid;
+        for(var j = 0; j < this.spriteheight * Constants.PIXELS_PER_SIDE; j++)
+          for(var k = 0; k < this.spritewidth * Constants.PIXELS_PER_SIDE; k++)
+            grid[j][k] = data[index++];
+        if(i != nframes - 1)
+          this.frameCache.AddFrame();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    this.spriteFile.value = "";
+  }
+
+  RelativeMouse(e)
+  {
+    const crect = this.c.getBoundingClientRect();
+    const x = e.clientX - crect.x, y = e.clientY - crect.y;
+    return { x, y, inBounds: (x > 0 && x < this.c.width && y > 0 && y < this.c.height) };
   }
 
   UpdateFrameTime()
@@ -95,12 +287,12 @@ class Canvas
     this.CreateGrid();
   }
 
-  UpdatePixelSize(e)
+  UpdatePixelSize()
   {
-    this.spsize = parseInt(e.target.value);
+    this.spsize = parseInt(this.pixelSize.value);
 
     this.c.width = this.spsize * this.spritewidth * this.tilewidth * Constants.PIXELS_PER_SIDE;
-    this.c.height = this.spsize * this.spritewidth * this.tileheight * Constants.PIXELS_PER_SIDE;
+    this.c.height = this.spsize * this.spriteheight * this.tileheight * Constants.PIXELS_PER_SIDE;
     this.preview.width = this.spsize * this.spritewidth * Constants.PIXELS_PER_SIDE;
     this.preview.height = this.spsize * this.spriteheight * Constants.PIXELS_PER_SIDE;
 
@@ -121,6 +313,11 @@ class Canvas
   AdvanceCurrentFrame(dx)
   {
     this.frameCache.AdvanceCurrentFrame(dx);
+    if(!this.GetCurrentFrame().selected.IsEmpty())
+    {
+      this.toggleSelect.checked = true;
+      this.ToggleSelect();
+    }
     this.Draw();
   }
 
@@ -132,7 +329,7 @@ class Canvas
   Clear()
   {
     this.ctx.clearRect(0, 0, this.c.width, this.c.height);
-    this.ctx.fillStyle = this.clearColor.value;
+    this.ctx.fillStyle = (this.clearColor ? this.clearColor.value : '#000000');
     this.ctx.fillRect(0, 0, this.c.width, this.c.height);
   }
 
@@ -168,6 +365,13 @@ class Canvas
     this.ctx.globalAlpha = alpha;
   }
 
+  StrokeRect(x, y, c)
+  {
+    this.ctx.strokeStyle = c;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x * this.spsize + .5, y * this.spsize + .5, this.spsize - 1, this.spsize - 1);
+  }
+
   DrawPixel(x, y, c, a = 1)
   {
     const tempAlpha = this.ctx.globalAlpha;
@@ -181,24 +385,57 @@ class Canvas
 
   GetPixel(x, y)
   {
+    if(x < 0 || x >= this.tilewidth * this.spritewidth * Constants.PIXELS_PER_SIDE ||
+      y < 0 || y >= this.tileheight * this.spriteheight * Constants.PIXELS_PER_SIDE)
+      return;
     const rx = x % (this.spritewidth * Constants.PIXELS_PER_SIDE);
     const ry = y % (this.spriteheight * Constants.PIXELS_PER_SIDE);
     return this.GetCurrentFrame().GetPixel(rx, ry);
   }
 
+  MouseInBounds(mouse)
+  {
+    if(mouse.px < 0 || mouse.px >= this.tilewidth * this.spritewidth * Constants.PIXELS_PER_SIDE ||
+      mouse.py < 0 || mouse.py >= this.tileheight * this.spriteheight * Constants.PIXELS_PER_SIDE)
+      return false;
+    return true;
+  }
+
   SetPixel(mouse, v = (this.paletteCache.currentPalette ? this.paletteCache.currentPalette.selected : undefined))
   {
+    if(!this.MouseInBounds(mouse))
+      return;
+
     const x = mouse.px % (this.spritewidth * Constants.PIXELS_PER_SIDE);
     const y = mouse.py % (this.spriteheight * Constants.PIXELS_PER_SIDE);
+
+    if(this.toggleSelect.checked)
+    {
+      if(this.selectMode.value == Constants.SELECT_RECT)
+      {
+        if(this.selectRectStart === undefined)
+          this.selectRectStart = { x, y };
+        else
+          this.GetCurrentFrame().SelectRect(this.selectRectStart, { x, y });
+      }
+      this.GetCurrentFrame().SelectPixel(x, y);
+      this.Draw();
+      return;
+    }
     if(v === undefined || this.GetCurrentFrame().GetPixel(x, y) === v)
       return;
-    this.GetCurrentFrame().SetPixel(x, y, v);
+
+    this.GetCurrentFrame().SetPixel(x, y, v, this.mirrorX.checked, this.mirrorY.checked);
     this.Draw();
   }
 
   FloodFill(mouse)
   {
-    this.GetCurrentFrame().FloodFill(mouse.px, mouse.py, this.paletteCache.currentPalette.selected);
+    if(!this.MouseInBounds(mouse))
+      return;
+    const x = mouse.px % (this.spritewidth * Constants.PIXELS_PER_SIDE);
+    const y = mouse.py % (this.spriteheight * Constants.PIXELS_PER_SIDE);
+    this.GetCurrentFrame().FloodFill(x, y, this.paletteCache.currentPalette.selected);
     this.Draw();
   }
 
@@ -217,10 +454,21 @@ class Canvas
       for(var x = 0; x < pg.width; x++)
       {
         const cur = pg.grid[y][x];
-        if(cur != Constants.COLOR_CLEAR)
+        const selected = this.GetCurrentFrame().selected.grid[y][x];
+        if(cur != Constants.COLOR_CLEAR || selected != Constants.COLOR_CLEAR)
           for(var tx = 0; tx < this.tilewidth; tx++)
             for(var ty = 0; ty < this.tileheight; ty++)
-              this.DrawPixel(x + this.spritewidth * Constants.PIXELS_PER_SIDE * tx, y + this.spriteheight * Constants.PIXELS_PER_SIDE * ty, palette.At(cur).hex);
+            {
+              const sx = x + this.spritewidth * Constants.PIXELS_PER_SIDE * tx;
+              const sy = y + this.spriteheight * Constants.PIXELS_PER_SIDE * ty;
+              if(selected != Constants.COLOR_CLEAR)
+              {
+                this.DrawPixel(sx, sy, palette.At(selected).hex);
+                this.DrawPixel(sx, sy, palette.At(selected).inverseHex, this.selectAlpha.value);
+              }
+              else
+                this.DrawPixel(sx, sy, palette.At(cur).hex);
+            }
       }
     }
 
@@ -229,7 +477,7 @@ class Canvas
     {
       this.previewctx.drawImage(
         i,
-        0, 0, this.spsize * Constants.PIXELS_PER_SIDE, this.spsize * Constants.PIXELS_PER_SIDE,
+        0, 0, this.spsize * Constants.PIXELS_PER_SIDE * this.spritewidth, this.spsize * Constants.PIXELS_PER_SIDE * this.spriteheight,
         0, 0, this.preview.width, this.preview.height
       );
       this.frameCache.UpdatePreview(this.preview.toDataURL());

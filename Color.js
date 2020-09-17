@@ -14,6 +14,19 @@ class Color
     Constants.CreateConst(this, 'inverseHex', this.Hex(inverse));
   }
 
+  get r()
+  {
+    return this.uint & (0xff << 16);
+  }
+  get g()
+  {
+    return this.uint & (0xff << 8);
+  }
+  get b()
+  {
+    return this.uint & 0xff;
+  }
+
   Hex(x)
   {
     let s = x.toString(16).toUpperCase();
