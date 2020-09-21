@@ -132,11 +132,15 @@ class PaletteCache
     return list;
   }
 
-  SelectFromBlendCanvas(e)
+  SelectFromCanvases(e)
   {
     const list = this.UpdateCanvases(e);
     if(list)
+    {
       navigator.clipboard.writeText(list[this.lastCanvasUpdateCoords.x].hex.substring(1));
+      if(list !== this.blendColorList)
+        this.SetCurrentColor(this.lastCanvasUpdateCoords.x);
+    }
   }
 
   BlendColors(e, slot, display)

@@ -66,12 +66,6 @@ class Canvas
       this.toggleSelect.addEventListener('change', this.ToggleSelect.bind(this));
       this.selectMode = document.getElementById('selectSelectMode');
       this.selectRectStart = undefined;
-      this.selectColor = document.getElementById('inputSelectColor');
-      this.selectColor.addEventListener('change', this.Draw.bind(this));
-      this.selectAlpha = document.getElementById('inputSelectAlpha');
-      this.selectAlpha.addEventListener('change', this.UpdateSelectAlpha.bind(this, false));
-      this.selectAlphaDisplay = document.getElementById('inputSelectAlphaDisplay');
-      this.selectAlphaDisplay.addEventListener('change', this.UpdateSelectAlpha.bind(this, true));
 
       document.getElementById('buttonFlipX').addEventListener('click', this.FlipX.bind(this));
       document.getElementById('buttonFlipY').addEventListener('click', this.FlipY.bind(this));
@@ -133,16 +127,6 @@ class Canvas
     }
     else
       this.GetCurrentFrame().PushUndo();
-
-    this.Draw();
-  }
-
-  UpdateSelectAlpha(display)
-  {
-    if(display)
-      this.selectAlpha.value = this.selectAlphaDisplay.value;
-    else
-      this.selectAlphaDisplay.value = this.selectAlpha.value;
 
     this.Draw();
   }
@@ -464,7 +448,7 @@ class Canvas
               if(selected != Constants.COLOR_CLEAR)
               {
                 this.DrawPixel(sx, sy, palette.At(selected).hex);
-                this.DrawPixel(sx, sy, palette.At(selected).inverseHex, this.selectAlpha.value);
+                this.DrawPixel(sx, sy, palette.At(selected).inverseHex, .75);
               }
               else
                 this.DrawPixel(sx, sy, palette.At(cur).hex);

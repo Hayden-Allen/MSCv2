@@ -24,7 +24,40 @@ class FrameCache
     newClear.addEventListener('click', this.ClearFrame.bind(this), false);
     oldClear.parentNode.replaceChild(newClear, oldClear);
 
+    document.getElementById('buttonFrameSwap').addEventListener('click', this.SwapFrames.bind(this));
+
     Tools.AddUIBR();
+  }
+
+  SwapFrames()
+  {
+    const left = document.getElementById('inputFrameSwapLeft').value;
+    const right = document.getElementById('inputFrameSwapRight').value;
+
+    if(isNaN(left) || isNaN(right) || left === right)
+      return;
+
+    let leftGreater = left > right;
+    let min = Math.min(left, right), max = Math.max(left, right);
+    if(min < 0 || max < 0 || min >= this.frames.length || max >= this.frames.length){
+      alert('One or more of the given frame indices is invalid.');
+      return;
+    }
+
+    const li = (leftGreater ? max : min);
+    const ri = (leftGreater ? min + 1 : max);
+
+    const frame = this.frames[li];
+    const preview = this.display[li];
+
+    this.frames.splice(li, 1);
+    this.frames.splice(ri, 0, frame);
+
+    for(var i = 0; i < this.frames.length; i++)
+    {
+      this.SetCurrentFrame(i);
+      this.canvas.Draw();
+    }
   }
 
   ClearFrame()
@@ -49,6 +82,7 @@ class FrameCache
   SetCurrentFrame(i)
   {
     this.SelectFrame(this.currentFrame = i);
+    navigator.clipboard.writeText(i);
   }
 
   AdvanceCurrentFrame(dx)
@@ -104,15 +138,18 @@ class FrameCache
     if(this.frames.length === 1)
       return;
 
-    this.frames.splice(this.currentFrame, 1);
-    Constants.PREVIEW_DIV.removeChild(this.display[this.currentFrame]);
-    this.display.splice(this.currentFrame, 1);
+    if(confirm('Delete the current frame? YOU CANNOT UNDO THIS.'))
+    {
+      this.frames.splice(this.currentFrame, 1);
+      Constants.PREVIEW_DIV.removeChild(this.display[this.currentFrame]);
+      this.display.splice(this.currentFrame, 1);
 
-    for(var i = this.currentFrame; i < this.display.length; i++)
-      this.display[i].id--;
+      for(var i = this.currentFrame; i < this.display.length; i++)
+        this.display[i].id--;
 
-    this.AdvanceCurrentFrame(-1);
-    this.canvas.Draw();
+      this.AdvanceCurrentFrame(-1);
+      this.canvas.Draw();
+    }
   }
 
   UpdatePreview(url)
