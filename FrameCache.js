@@ -95,7 +95,7 @@ class FrameCache
     this.SelectFrame(this.currentFrame);
   }
 
-  AddFrame()
+  async AddFrame()
   {
     let newFrame;
     if(this.currentFrame !== -1)
@@ -107,18 +107,17 @@ class FrameCache
 
     const button = Tools.AddUIInput(
       { type: 'image', src: this.canvas.c.toDataURL(), class: 'preview', id: index, style: `width: ${Constants.PREVIEW_SIZE}px; height: ${Constants.PREVIEW_SIZE}px;` },
-      { click: (e =>
+      { click: (async e =>
         {
           this.SetCurrentFrame(parseInt(e.target.id));
           if(this.canvas.initialized)
-            this.canvas.Draw();
+            await this.canvas.Draw();
         }).bind(this)
       },
       { draggable: true }
     );
     this.display.splice(index, 0, Tools.InsertPreview(button, this.display[index]));
-    this.display.forEach((e, i) => { e.id = i; e.click(); });
-    button.click();
+    await button.click();
 
     return this.GetCurrentFrame();
   }

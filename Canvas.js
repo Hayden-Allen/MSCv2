@@ -189,12 +189,12 @@ class Canvas
     }, 0);
   }
 
-  Load(e){
+  async Load(e){
     if(!confirm('WARNING: Any unsaved progress on the current sprite will be lost. Load anyway?'))
       return;
     let file = e.target.files[0];
     let reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       let data = new Uint8Array(e.target.result);
       let index = 0;
 
@@ -230,11 +230,12 @@ class Canvas
         for(var j = 0; j < this.spriteheight * Constants.PIXELS_PER_SIDE; j++)
           for(var k = 0; k < this.spritewidth * Constants.PIXELS_PER_SIDE; k++)
             grid[j][k] = data[index++];
+        await this.Draw();
         if(i != nframes - 1)
           this.frameCache.AddFrame();
       }
     };
-    reader.readAsArrayBuffer(file);
+    await reader.readAsArrayBuffer(file);
     this.spriteFile.value = "";
   }
 
@@ -269,6 +270,7 @@ class Canvas
     this['tile' + axis] = parseInt(e.target.value);
     this.c[axis] = this.spsize * this['sprite' + axis] * this['tile' + axis] * Constants.PIXELS_PER_SIDE;
     this.CreateGrid();
+    this.Draw();
   }
 
   UpdatePixelSize()
@@ -392,6 +394,8 @@ class Canvas
 
     const x = mouse.px % (this.spritewidth * Constants.PIXELS_PER_SIDE);
     const y = mouse.py % (this.spriteheight * Constants.PIXELS_PER_SIDE);
+    const mx = this.mirrorX.checked, my = this.mirrorY.checked;
+    let cf = this.GetCurrentFrame();
 
     if(this.toggleSelect.checked)
     {
@@ -413,16 +417,43 @@ class Canvas
         this.DrawPixel(x, y, this.paletteCache.currentPalette.At(color).inverseHex, .75);
       return;
     }
-    else if(v === undefined || this.GetCurrentFrame().GetPixel(x, y) === v)
+    else if(v === undefined || cf.GetPixel(x, y) === v)
       return;
     else
     {
-      this.GetCurrentFrame().SetPixel(x, y, v, this.mirrorX.checked, this.mirrorY.checked);
-      this.ctx.clearRect(x * this.spsize, y * this.spsize, this.spsize, this.spsize);
-      if(v !== Constants.COLOR_CLEAR)
-        this.DrawPixel(x, y, this.paletteCache.currentPalette.At(this.GetCurrentFrame().grid.grid[y][x]).hex);
-      else
-        this.DrawPixel(x, y, this.clearColor.value);
+      cf.SetPixel(x, y, v, mx, my);
+
+      const color = (v !== Constants.COLOR_CLEAR ? this.paletteCache.currentPalette.At(cf.grid.grid[y][x]).hex : this.clearColor.value);
+      console.log(color);
+
+      for(var tx = 0; tx < this.tilewidth; tx++)
+        for(var ty = 0; ty < this.tileheight; ty++)
+        {
+          const ex = x + tx * Constants.PIXELS_PER_SIDE;
+          const ey = y + ty * Constants.PIXELS_PER_SIDE;
+
+          this.ctx.clearRect(ex * this.spsize, ey * this.spsize, this.spsize, this.spsize);
+          this.DrawPixel(ex, ey, color);
+          if(mx)
+          {
+            const x2 = (cf.grid.grid[0].length - 1 - ex);
+            this.ctx.clearRect(x2 * this.spsize, ey * this.spsize, this.spsize, this.spsize);
+            this.DrawPixel(x2, ey, color);
+          }
+          if(my)
+          {
+            const y2 = (cf.grid.grid.length - 1 - ey);
+            this.ctx.clearRect(ex * this.spsize, y2 * this.spsize, this.spsize, this.spsize);
+            this.DrawPixel(ex, y2, color);
+          }
+          if(mx && my)
+          {
+            const x2 = (cf.grid.grid[0].length - 1 - ex);
+            const y2 = (cf.grid.grid.length - 1 - ey);
+            this.ctx.clearRect(x2 * this.spsize, y2 * this.spsize, this.spsize, this.spsize);
+            this.DrawPixel(x2, y2, color);
+          }
+        }
     }
 
     this.UpdateCurrentFramePreview();
@@ -440,9 +471,8 @@ class Canvas
     this.Draw();
   }
 
-  Draw()
+  async Draw()
   {
-    console.trace();
     this.Clear();
 
     const pg = this.GetCurrentFrame().grid;
@@ -474,23 +504,27 @@ class Canvas
       }
     }
 
-    this.UpdateCurrentFramePreview();
+    await this.UpdateCurrentFramePreview();
     this.DrawGrid();
   }
 
-  UpdateCurrentFramePreview()
+  async UpdateCurrentFramePreview()
   {
-    let img = new Image();
-    img.onload = (e) =>
-    {
-      this.previewctx.drawImage(
-        e.target,
-        0, 0, this.spsize * Constants.PIXELS_PER_SIDE * this.spritewidth, this.spsize * Constants.PIXELS_PER_SIDE * this.spriteheight,
-        0, 0, this.preview.width, this.preview.height
-      );
-      this.frameCache.UpdatePreview(this.preview.toDataURL());
-    };
-    img.src = this.c.toDataURL();
+    return new Promise(resolve =>
+      {
+        let img = new Image();
+        img.onload = (e) =>
+        {
+          this.previewctx.drawImage(
+            e.target,
+            0, 0, this.spsize * Constants.PIXELS_PER_SIDE * this.spritewidth, this.spsize * Constants.PIXELS_PER_SIDE * this.spriteheight,
+            0, 0, this.preview.width, this.preview.height
+          );
+          this.frameCache.UpdatePreview(this.preview.toDataURL());
+          resolve();
+        };
+        img.src = this.c.toDataURL();
+      });
   }
 
   DrawGrid()
