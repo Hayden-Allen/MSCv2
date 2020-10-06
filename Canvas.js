@@ -157,7 +157,7 @@ class Canvas
     let charMax = 0b11111111;
 
     let index = 0;
-    let data = new Uint8Array(5 + (16 * 3) + (this.spritewidth * Constants.PIXELS_PER_SIDE * this.spriteheight * Constants.PIXELS_PER_SIDE * this.frameCache.frames.length));
+    let data = new Uint8Array(5 + (Constants.NUM_COLORS * 3) + (this.spritewidth * Constants.PIXELS_PER_SIDE * this.spriteheight * Constants.PIXELS_PER_SIDE * this.frameCache.frames.length));
     data[index++] = this.spritewidth;
     data[index++] = this.spriteheight;
     data[index++] = this.frameCache.frames.length;
@@ -330,7 +330,7 @@ class Canvas
       this.Line(0, y, this.c.width, y, !(y % (this.spsize * this.spriteheight * Constants.PIXELS_PER_SIDE)) ? color.inverseHex : color.hex, alpha);
 
     this.grid = new Image();
-    this.grid.onload = () => this.Draw();
+    this.grid.onload = () => this.DrawGrid();
     this.grid.src = this.c.toDataURL();
   }
 
@@ -400,17 +400,34 @@ class Canvas
         if(this.selectRectStart === undefined)
           this.selectRectStart = { x, y };
         else
+        {
           this.GetCurrentFrame().SelectRect(this.selectRectStart, { x, y });
+          this.Draw();
+        }
       }
-      this.GetCurrentFrame().SelectPixel(x, y);
-      this.Draw();
+      else
+        this.GetCurrentFrame().SelectPixel(x, y);
+
+      const color = this.GetCurrentFrame().selected.grid[y][x];
+      if(color !== Constants.COLOR_CLEAR)
+        this.DrawPixel(x, y, this.paletteCache.currentPalette.At(color).inverseHex, .75);
       return;
     }
-    if(v === undefined || this.GetCurrentFrame().GetPixel(x, y) === v)
+    else if(v === undefined || this.GetCurrentFrame().GetPixel(x, y) === v)
       return;
+    else
+    {
+      this.GetCurrentFrame().SetPixel(x, y, v, this.mirrorX.checked, this.mirrorY.checked);
+      this.ctx.clearRect(x * this.spsize, y * this.spsize, this.spsize, this.spsize);
+      if(v !== Constants.COLOR_CLEAR)
+        this.DrawPixel(x, y, this.paletteCache.currentPalette.At(this.GetCurrentFrame().grid.grid[y][x]).hex);
+      else
+        this.DrawPixel(x, y, this.clearColor.value);
+    }
 
-    this.GetCurrentFrame().SetPixel(x, y, v, this.mirrorX.checked, this.mirrorY.checked);
-    this.Draw();
+    this.UpdateCurrentFramePreview();
+
+    this.DrawGrid();
   }
 
   FloodFill(mouse)
@@ -425,6 +442,7 @@ class Canvas
 
   Draw()
   {
+    console.trace();
     this.Clear();
 
     const pg = this.GetCurrentFrame().grid;
@@ -456,19 +474,27 @@ class Canvas
       }
     }
 
+    this.UpdateCurrentFramePreview();
+    this.DrawGrid();
+  }
+
+  UpdateCurrentFramePreview()
+  {
     let img = new Image();
-    img.onload = ((i) =>
+    img.onload = (e) =>
     {
       this.previewctx.drawImage(
-        i,
+        e.target,
         0, 0, this.spsize * Constants.PIXELS_PER_SIDE * this.spritewidth, this.spsize * Constants.PIXELS_PER_SIDE * this.spriteheight,
         0, 0, this.preview.width, this.preview.height
       );
       this.frameCache.UpdatePreview(this.preview.toDataURL());
-    }).bind(this, img);
+    };
     img.src = this.c.toDataURL();
+  }
 
-
+  DrawGrid()
+  {
     if(this.toggleGrid.checked)
     {
       const alpha = this.ctx.globalAlpha;

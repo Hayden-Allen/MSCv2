@@ -65,12 +65,10 @@ class PaletteCache
     this.colorList = [];
     for(var i = 0; i < Constants.NUM_COLORS; i++)
     {
-      this.colorList.push(Tools.AddUIInput({ type: 'text', size: 6 }, { change: this.UpdatePalette.bind(this) }, {}, Constants.PALETTE_DIV));
+      this.colorList.push(Tools.AddUIInput({ type: 'text', size: 6 }, { change: this.UpdatePalette.bind(this) }, {}, Constants.PALETTE_INPUT_DIV));
       if((i + 1) % (Constants.NUM_COLORS / 2) == 0)
-        Tools.AddUIBR(1, Constants.PALETTE_DIV);
+        Tools.AddUIBR(1, Constants.PALETTE_INPUT_DIV);
     }
-
-    Tools.AddUIXBase('P', {}, {}, { textContent: '-------------------------------------------------' }, Constants.PALETTE_DIV);
 
     this.palettes = [];
     this.currentPalette = new Palette('newPalette',

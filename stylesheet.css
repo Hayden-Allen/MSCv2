@@ -15,6 +15,12 @@ div.noSelect
   margin-top: 10px;
   margin-left: 10px;
 }
+div.ui-box
+{
+  margin-bottom: 20px;
+  padding: 5px;
+  border: 1px dashed white;
+}
 div
 {
   display: inline-block;
