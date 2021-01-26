@@ -13,6 +13,12 @@ class PaletteCache
     this.paletteSelect = document.getElementById('selectPalette');
     this.paletteSelect.addEventListener('change', this.SwitchPalette.bind(this));
 
+    this.paletteCombo1 = document.getElementById("selectPaletteCombo1");
+    this.paletteCombo2 = document.getElementById("selectPaletteCombo2");
+    this.paletteCombo1Top = document.getElementById("inputPaletteCombo1Top");
+    this.paletteCombo2Top = document.getElementById("inputPaletteCombo2Top");
+    this.paletteComboName = document.getElementById("inputPaletteComboName");
+
     this.blendColor1 = document.getElementById('inputBlendColor1');
     this.blendColor1.addEventListener('change', (e => this.BlendColors(e, 1, false)).bind(this));
     this.blendColor1Display = document.getElementById('inputBlendColor1Display');
@@ -26,41 +32,37 @@ class PaletteCache
     this.blendCanvas = new Canvas(
       document.getElementById('canvasBlend'),
       Constants.NUM_COLORS, 1,
-      { nocache: true, spsize: 20, style: 'border: 1px solid black;' }
+      { nocache: true, spsize: 20, style: 'border: 1px solid black; margin-top: 5px;' }
     );
     this.blendCanvas.paletteCache = this;
 
+    this.copyFromMin = document.getElementById('inputCopyFromMin');
+    this.copyFromMax = document.getElementById('inputCopyFromMax');
+    this.copyToStart = document.getElementById('inputCopyToStart');
+    this.copyStep = document.getElementById('inputCopyStep');
+    document.getElementById('buttonCopyRange').addEventListener('click', (e => this.CopyRange()).bind(this));
+    this.blendPaletteColor = document.getElementById('inputBlendPaletteColor');
+    this.blendPaletteColor.addEventListener('change', (async e => await this.BlendPalette()).bind(this));
+    this.blendPaletteAlpha = document.getElementById('inputBlendPaletteAlpha');
+    this.blendPaletteAlpha.addEventListener('change', (async e => await this.BlendPalette()).bind(this));
+    document.getElementById('buttonSavePaletteBlend').addEventListener('click', (e => this.SavePaletteBlend()).bind(this));
+    document.getElementById('buttonUndoPaletteBlend').addEventListener('click', (e => this.UndoPaletteBlend()).bind(this));
 
-
+    document.getElementById('buttonInvertPalette').addEventListener('click', (e => this.CreateInverse()).bind(this));
+    document.getElementById('buttonGreyscalePalette').addEventListener('click', (e => this.CreateGreyscale()).bind(this));
     this.paletteColor = document.getElementById('inputPaletteColor');
-    this.paletteColor.addEventListener('change', (e => this.UpdatePaletteColor(e, false)).bind(this));
+    this.paletteColor.addEventListener('change', (e => this.UpdatePaletteColor(false)).bind(this));
     this.paletteColorDisplay = document.getElementById('inputPaletteColorDisplay');
-    this.paletteColorDisplay.addEventListener('change', (e => this.UpdatePaletteColor(e, true)).bind(this));
-    this.copyButton = document.getElementById('buttonPaletteColorCopy');
-    this.copyButton.addEventListener('click', (() => navigator.clipboard.writeText(this.paletteColorDisplay.value)).bind(this));
+    this.paletteColorDisplay.addEventListener('change', (e => this.UpdatePaletteColor(true)).bind(this));
+    this.paletteIndex = document.getElementById('inputPaletteIndex');
+    this.paletteIndex.addEventListener('change', (e => this.SetCurrentColor(this.paletteIndex.value)).bind(this));
 
     this.paletteCanvas = new Canvas(
       document.getElementById('canvasPalette'),
       Constants.NUM_COLORS, 1,
-      { nocache: true, spsize: 20, style: 'border: 1px solid black;' }
+      { nocache: true, spsize: Constants.PALETTE_CANVAS_SIZE, style: 'border: 1px solid black; margin-top: 5px;' }
     );
     this.paletteCanvas.paletteCache = this;
-
-
-    this.display = [];
-    for(var i = 0; i < Constants.NUM_COLORS; i++)
-    {
-      this.display.push(
-          Tools.AddUIButton(
-            { class: 'color' },
-            { click: this.SetCurrentColor.bind(this, i) },
-            { textContent: '' + i.toString(16).toUpperCase() }
-          )
-      );
-      if((i + 1) % (Constants.NUM_COLORS / 2) == 0)
-        Tools.AddUIBR();
-    }
-    Tools.AddUIBR();
 
     this.colorList = [];
     for(var i = 0; i < Constants.NUM_COLORS; i++)
@@ -71,17 +73,102 @@ class PaletteCache
     }
 
     this.palettes = [];
-    this.currentPalette = new Palette('newPalette',
-      [
-        new Color(0x000000), new Color(0xffffff), new Color(0xaaaaaa), new Color(0x555555),
-        new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff), new Color(0xffff00),
-        new Color(0xff00ff), new Color(0x00ffff), new Color(0x770000), new Color(0x007700),
-        new Color(0x000077), new Color(0x777700), new Color(0x770077), new Color(0x007777)
-      ]);
+    this.currentPalette = Constants.PALETTE_DEFAULT;
+    this.SavePaletteBlend();
     this.UpdateDisplay();
     this.AddPalette(this.currentPalette);
+    this.AddPalette(Constants.PALETTE_RAINBOW);
     this.lastCanvasUpdateCoords = { x: 0, y: 0 };
     this.blendColorList = [];
+  }
+
+  UndoPaletteBlend()
+  {
+    this.currentPalette = this.originalPalette.Clone();
+    this.UpdateDisplay();
+  }
+
+  SavePaletteBlend()
+  {
+    this.originalPalette = this.currentPalette.Clone();
+  }
+
+  async BlendPalette()
+  {
+    const blend = new Color(parseInt(this.blendPaletteColor.value.substring(1), 16));
+    for(var i = 0; i < Constants.NUM_COLORS; i++)
+       this.currentPalette.Set(i, this.BlendColor(blend, this.originalPalette.At(i), parseFloat(this.blendPaletteAlpha.value)));
+    this.UpdateDisplay();
+
+    await this.canvas.UpdateCurrentFramePreview();
+  }
+
+  CreateInverse()
+  {
+    const name = `${this.currentPalette.name}_inverse`;
+
+    let inverse = new Palette(name, new Array(Constants.NUM_COLORS));
+    for(var i = 0; i < Constants.NUM_COLORS; i++)
+      inverse.Set(i, new Color(this.currentPalette.At(i).inverse));
+
+    this.AddPalette(inverse);
+    this.SetPalette(inverse);
+  }
+
+  CreateGreyscale()
+  {
+    const name = `${this.currentPalette.name}_grey`;
+
+    let greyscale = new Palette(name, new Array(Constants.NUM_COLORS));
+    for(var i = 0; i < Constants.NUM_COLORS; i++)
+    {
+      const cur = this.currentPalette.At(i);
+      const mag = Math.ceil((cur.rnorm + cur.gnorm + cur.bnorm) / 3);
+      greyscale.Set(i, new Color((mag << 16) | (mag << 8) | mag));
+    }
+
+    this.AddPalette(greyscale);
+    this.SetPalette(greyscale);
+  }
+
+  CopyRange()
+  {
+    const min = parseInt(this.copyFromMin.value);
+    const max = parseInt(this.copyFromMax.value);
+    const dir = min < max ? 1 : -1;
+    const step = parseInt(this.copyStep.value);
+
+    let cur = parseInt(this.copyToStart.value);
+    for(var i = min; i !== max + dir; i += step * dir)
+    {
+      this.currentPalette.Set(cur, this.blendColorList[i]);
+      cur = (cur + 1) % Constants.NUM_COLORS;
+    }
+
+    this.SavePaletteBlend();
+
+    this.DrawPaletteColors();
+  }
+
+  CreatePaletteCombo()
+  {
+    let temp = new Array(Constants.NUM_COLORS);
+    temp.fill(new Color(0));
+
+    let p = new Palette(this.paletteComboName.value, temp);
+
+    const palette1 = this.palettes.find(p => p.name === this.paletteCombo1.value);
+    const palette2 = this.palettes.find(p => p.name === this.paletteCombo2.value);
+
+    let start = (this.paletteCombo1Top.checked ? 0 : Constants.NUM_COLORS / 2), end = start + Constants.NUM_COLORS / 2;
+    for(var i = start; i < end; i++)
+      p.Set(i - start, palette1.At(i));
+
+    start = (this.paletteCombo2Top.checked ? 0 : Constants.NUM_COLORS / 2), end = start + Constants.NUM_COLORS / 2;
+    for(var i = start; i < end; i++)
+      p.Set(Constants.NUM_COLORS / 2 + (i - start), palette2.At(i));
+
+    this.AddPalette(p);
   }
 
   SwitchPalette()
@@ -130,14 +217,19 @@ class PaletteCache
     return list;
   }
 
-  SelectFromCanvases(e)
+  SelectFromCanvases(e, button)
   {
     const list = this.UpdateCanvases(e);
     if(list)
     {
-      navigator.clipboard.writeText(list[this.lastCanvasUpdateCoords.x].hex.substring(1));
-      if(list !== this.blendColorList)
-        this.SetCurrentColor(this.lastCanvasUpdateCoords.x);
+      if(button === 0)
+      {
+        navigator.clipboard.writeText(list[this.lastCanvasUpdateCoords.x].hex.substring(1));
+        if(list !== this.blendColorList)
+          this.SetCurrentColor(this.lastCanvasUpdateCoords.x);
+      }
+      else
+        navigator.clipboard.writeText(this.lastCanvasUpdateCoords.x);
     }
   }
 
@@ -191,48 +283,51 @@ class PaletteCache
       this.canvas.Draw();
   }
 
-  UpdatePaletteColor(e, display)
+  UpdatePaletteColor(display)
   {
     if(display)
       this.paletteColor.value = '#' + this.paletteColorDisplay.value;
     else
       this.paletteColorDisplay.value = this.paletteColor.value.substring(1);
+
+    this.currentPalette.Set(this.currentPalette.selected, new Color(parseInt(this.paletteColorDisplay.value, 16)));
+
+    this.UpdateDisplay();
+
+    this.canvas.Draw();
   }
 
   SetCurrentColor(i)
   {
+    if(!(i >= 0 && i < Constants.NUM_COLORS))
+      return;
+
     if(this.currentPalette)
-    {
       this.currentPalette.Select(i);
-      this.display.forEach(b => b.setAttribute('class', 'color'));
-      this.display[i].setAttribute('class', 'color-selected');
-    }
+
+    const hex = this.currentPalette.At(this.currentPalette.selected).hex;
+    this.paletteColor.value = hex;
+    this.paletteColorDisplay.value = hex.substring(1);
+
+    this.UpdatePaletteColor(false);
+
+    this.paletteIndex.value = i;
   }
 
   UpdateDisplay()
   {
-    this.display.forEach((b, i) =>
-    {
-      const c = this.currentPalette.At(i);
-      b.style.color = c.inverseHex;
-      b.style.backgroundColor = c.hex;
-    });
-
     for(var i = 0; i < Constants.NUM_COLORS; i++)
-    {
-      const c = this.currentPalette.At(i);
+      this.colorList[i].value = this.currentPalette.At(i).hex.substring(1);
 
-      this.display[i].style.color = c.inverseHex;
-      this.display[i].style.backgroundColor = c.hex;
-
-      this.colorList[i].value = c.hex.substring(1);
-    }
     this.DrawPaletteColors();
   }
 
   SetPalette(p)
   {
     this.currentPalette = p;
+    // copy new palette
+    this.SavePaletteBlend();
+
     this.paletteCanvas.Clear();
     this.DrawPaletteColors();
     this.paletteSelect.value = p.name;
@@ -257,6 +352,13 @@ class PaletteCache
     const option = document.createElement('OPTION');
     option.textContent = p.name;
     this.paletteSelect.appendChild(option);
+
+    const option1 = document.createElement('OPTION');
+    option1.textContent = p.name;
+    this.paletteCombo1.appendChild(option1);
+    const option2 = document.createElement('OPTION');
+    option2.textContent = p.name;
+    this.paletteCombo2.appendChild(option2);
   }
 
   LoadPalette(e)

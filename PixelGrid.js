@@ -39,6 +39,72 @@ class PixelGrid
     }
   }
 
+  ShiftRow(r, dx)
+  {
+    const step = Math.sign(dx);
+    for(var i = 0; i < Math.abs(dx); i++)
+    {
+      if(step < 0)
+      {
+        const left = this.grid[r][0];
+        this.grid[r].shift();
+        this.grid[r].push(left);
+      }
+      else {
+        const right = this.grid[r][this.grid[r].length - 1];
+        this.grid[r].pop();
+        this.grid[r].unshift(right);
+      }
+    }
+  }
+
+  ShiftCol(c, dy)
+  {
+    const step = Math.sign(dy);
+    for(var i = 0; i < Math.abs(dy); i++)
+    {
+      if(step < 0)
+      {
+        const top = this.grid[0][c];
+        for(var j = 0; j < this.grid.length - 1; j++)
+          this.grid[j][c] = this.grid[j + 1][c];
+        this.grid[this.grid.length - 1][c] = top;
+      }
+      else {
+        const bot = this.grid[this.grid.length - 1][c];
+        for(var j = this.grid.length - 1; j > 0; j--)
+          this.grid[j][c] = this.grid[j - 1][c];
+        this.grid[0][c] = bot;
+      }
+    }
+  }
+
+  WrapX(dx)
+  {
+    for(var i = 0; i < Math.abs(dx); i++)
+    {
+      for(var j = 0; j < this.grid.length; j++)
+      {
+        if(Math.sign(dx) < 0)
+          this.grid[j].push(this.grid[j].shift());
+        else
+          this.grid[j].unshift(this.grid[j].pop());
+      }
+    }
+  }
+
+  WrapY(dy)
+  {
+    console.log(Math.abs(dy))
+    for(var i = 0; i < Math.abs(dy); i++)
+    {
+      if(Math.sign(dy) < 0)
+        this.grid.push(this.grid.shift());
+      else
+        this.grid.unshift(this.grid.pop());
+    }
+  }
+
   ShiftX(dx)
   {
     if(dx < 0)

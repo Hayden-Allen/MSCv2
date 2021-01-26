@@ -13,6 +13,23 @@ class Frame
     this.undoStack.push(this.grid.Copy());
   }
 
+  ShiftRow(r, dx)
+  {
+    this.grid.ShiftRow(r, dx);
+  }
+  ShiftCol(c, dy)
+  {
+    this.grid.ShiftCol(c, dy);
+  }
+  WrapX(dx)
+  {
+    this.grid.WrapX(dx);
+  }
+  WrapY(dy)
+  {
+    this.grid.WrapY(dy);
+  }
+
   ShiftX(dx, selectMode)
   {
     if(selectMode)

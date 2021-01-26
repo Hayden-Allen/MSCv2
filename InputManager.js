@@ -9,11 +9,11 @@ class InputManager
     this.mu = [];
 
     window.oncontextmenu = (e) => { e.preventDefault(); };
-    window.onkeydown     = (e) => { this.kd.forEach(fn => fn.fn(e, this, fn.user)); };
-    window.onkeyup       = (e) => { this.ku.forEach(fn => fn.fn(e, this, fn.user)); };
-    window.onmousemove   = (e) => { this.mm.forEach(fn => fn.fn(e, this, fn.user)); };
-    window.onmousedown   = (e) => { this.md.forEach(fn => fn.fn(e, this, fn.user)); };
-    window.onmouseup     = (e) => { this.mu.forEach(fn => fn.fn(e, this, fn.user)); };
+    window.onkeydown     = async (e) => { await Promise.all(this.kd.map(fn => fn.fn(e, this, fn.user))); };
+    window.onkeyup       = async (e) => { await Promise.all(this.ku.map(fn => fn.fn(e, this, fn.user))); };
+    window.onmousemove   = async (e) => { await Promise.all(this.mm.map(fn => fn.fn(e, this, fn.user))); };
+    window.onmousedown   = async (e) => { await Promise.all(this.md.map(fn => fn.fn(e, this, fn.user))); };
+    window.onmouseup     = async (e) => { await Promise.all(this.mu.map(fn => fn.fn(e, this, fn.user))); };
 
     this.canvas = canvas;
     this.mouse = {

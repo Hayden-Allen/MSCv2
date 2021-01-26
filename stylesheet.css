@@ -17,9 +17,15 @@ div.noSelect
 }
 div.ui-box
 {
-  margin-bottom: 20px;
+  border: 1px solid grey;
+  border-radius: 3px;
+  margin: 10px;
   padding: 5px;
-  border: 1px dashed white;
+  background-color: #444444;
+}
+div.ui-block
+{
+  margin: 10px;
 }
 div
 {
@@ -28,7 +34,7 @@ div
 }
 body
 {
-  background-color: #333333;
+  background-color: #222222;
 }
 select
 {
@@ -72,4 +78,26 @@ button.color-selected
 {
   margin: 1px;
   border: 2px solid blue;
+}
+table
+{
+  table-layout: fixed;
+  width: 100%;
+}
+td
+{
+  border: 1px solid #999999;
+  border-radius: 3px;
+  background-color: #333333;
+}
+td.title
+{
+  font-weight: bold;
+  text-align: center;
+  font-size: 1vw;
+}
+.center
+{
+  display: block;
+  margin: auto;
 }

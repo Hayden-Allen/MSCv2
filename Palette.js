@@ -13,6 +13,12 @@ class Palette
     this.SetName(name);
   }
 
+  Clone()
+  {
+    const colors = [...this.colors];
+    return new Palette(this.name, colors);
+  }
+
   Set(i, c)
   {
     if(i < 0 || i >= this.colors.length)

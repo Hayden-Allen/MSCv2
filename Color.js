@@ -26,6 +26,18 @@ class Color
   {
     return this.uint & 0xff;
   }
+  get rnorm()
+  {
+    return (this.uint & (0xff << 16)) >> 16;
+  }
+  get gnorm()
+  {
+    return (this.uint & (0xff << 8)) >> 8;
+  }
+  get bnorm()
+  {
+    return this.uint & 0xff;
+  }
 
   Hex(x)
   {

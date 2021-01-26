@@ -1,13 +1,13 @@
 class Canvas
 {
-  constructor(c, w, h, { style = "", spsize = 5, grid = false, nocache = false } = {})
+  constructor(c, w, h, { style = '', spsize = 5, grid = false, nocache = false } = {})
   {
     c.width = w * spsize;
     c.height = h * spsize;
     c.style = style;
 
     this.c = c;
-    this.ctx = this.c.getContext("2d");
+    this.ctx = this.c.getContext('2d');
     this.spsize = spsize;
 
     if(!nocache)
@@ -42,11 +42,6 @@ class Canvas
       this.gridColor = document.getElementById('inputGridColor');
       this.gridColor.addEventListener('change', (() => { this.CreateGrid(); this.Draw(); }).bind(this));
 
-      this.gridAlpha = document.getElementById('inputGridAlpha');
-      this.gridAlpha.addEventListener('change', this.UpdateGridAlpha.bind(this, true));
-      this.gridAlphaDisplay = document.getElementById('inputGridAlphaDisplay');
-      this.gridAlphaDisplay.addEventListener('change', this.UpdateGridAlpha.bind(this, false));
-
       this.clearColor = document.getElementById('inputBackgroundColor');
       this.clearColor.addEventListener('change', this.Draw.bind(this));
 
@@ -70,7 +65,9 @@ class Canvas
       document.getElementById('buttonFlipX').addEventListener('click', this.FlipX.bind(this));
       document.getElementById('buttonFlipY').addEventListener('click', this.FlipY.bind(this));
       this.mirrorX = document.getElementById('inputMirrorX');
+      this.mirrorX.addEventListener('click', (() => { this.CreateGrid(); this.Draw(); }).bind(this));
       this.mirrorY = document.getElementById('inputMirrorY');
+      this.mirrorY.addEventListener('click', (() => { this.CreateGrid(); this.Draw(); }).bind(this));
 
       this.paletteCache = new PaletteCache(this);
       this.CreateGrid();
@@ -79,8 +76,10 @@ class Canvas
       this.lastFrameSwitch = performance.now();
     }
     this.initialized = true;
+    this.nocache = nocache;
 
     this.Clear();
+    this.UpdateCurrentFramePreview();
   }
 
   ToggleRealPixelSize()
@@ -261,7 +260,9 @@ class Canvas
     this.c[axis] = this.spsize * this['sprite' + axis] * this['tile' + axis] * Constants.PIXELS_PER_SIDE;
     this.preview[axis] = this.spsize * this['sprite' + axis] * Constants.PIXELS_PER_SIDE;
     this.frameCache.Resize(this.spritewidth * Constants.PIXELS_PER_SIDE, this.spriteheight * Constants.PIXELS_PER_SIDE);
+    this.frameCache.UpdatePreviews();
     this.CreateGrid();
+    this.Draw();
   }
 
   UpdateTileSize(e, axis)
@@ -283,21 +284,12 @@ class Canvas
     this.preview.height = this.spsize * this.spriteheight * Constants.PIXELS_PER_SIDE;
 
     this.CreateGrid();
-  }
-
-  UpdateGridAlpha(fromSlider)
-  {
-    if(fromSlider)
-      this.gridAlphaDisplay.value = this.gridAlpha.value;
-    else
-      this.gridAlpha.value = this.gridAlphaDisplay.value;
-
-    this.gridAlphaDisplay.value = Tools.Clamp(parseFloat(this.gridAlphaDisplay.value), 0, 1);
-    this.CreateGrid();
+    this.Draw();
   }
 
   AdvanceCurrentFrame(dx)
   {
+    this.UpdateCurrentFramePreview();
     this.frameCache.AdvanceCurrentFrame(dx);
     if(!this.GetCurrentFrame().selected.IsEmpty())
     {
@@ -324,12 +316,31 @@ class Canvas
     this.ctx.clearRect(0, 0, this.c.width, this.c.height);
 
     const color = new Color(parseInt(this.gridColor.value.substring(1), 16));
-    const alpha = parseFloat(this.gridAlpha.value);
+    const alpha = 1;
+    const mirrorColor = new Color(0x00ff00);
 
     for(var x = 0; x <= this.c.width; x += this.spsize)
-      this.Line(x, 0, x, this.c.height, !(x % (this.spsize * this.spritewidth * Constants.PIXELS_PER_SIDE)) ? color.inverseHex : color.hex, alpha);
+    {
+      let c;
+
+      if(this.mirrorX.checked && x === Constants.PIXELS_PER_SIDE * this.spsize * this.spritewidth / 2)
+        c = mirrorColor.hex;
+      else
+        c = (x !== 0 && x % (this.spsize * this.spritewidth * Constants.PIXELS_PER_SIDE) === 0) ? color.inverseHex : color.hex;
+
+      this.Line(x, 0, x, this.c.height, c, alpha);
+    }
     for(var y = 0; y <= this.c.height; y += this.spsize)
-      this.Line(0, y, this.c.width, y, !(y % (this.spsize * this.spriteheight * Constants.PIXELS_PER_SIDE)) ? color.inverseHex : color.hex, alpha);
+    {
+      let c;
+
+      if(this.mirrorY.checked && y === Constants.PIXELS_PER_SIDE * this.spsize * this.spriteheight / 2)
+        c = mirrorColor.hex;
+      else
+        c = (y !== 0 && y % (this.spsize * this.spriteheight * Constants.PIXELS_PER_SIDE) === 0) ? color.inverseHex : color.hex;
+
+      this.Line(0, y, this.c.width, y, c, alpha);
+    }
 
     this.grid = new Image();
     this.grid.onload = () => this.DrawGrid();
@@ -364,7 +375,7 @@ class Canvas
 
     this.ctx.fillStyle = c;
     this.ctx.globalAlpha = a;
-    this.ctx.fillRect(x * this.spsize, y * this.spsize, this.spsize, this.spsize);
+    this.ctx.fillRect(x * this.spsize, y * this.spsize, this.spsize + 1, this.spsize + 1);
 
     this.ctx.globalAlpha = tempAlpha;
   }
@@ -424,7 +435,6 @@ class Canvas
       cf.SetPixel(x, y, v, mx, my);
 
       const color = (v !== Constants.COLOR_CLEAR ? this.paletteCache.currentPalette.At(cf.grid.grid[y][x]).hex : this.clearColor.value);
-      console.log(color);
 
       for(var tx = 0; tx < this.tilewidth; tx++)
         for(var ty = 0; ty < this.tileheight; ty++)
@@ -455,8 +465,6 @@ class Canvas
           }
         }
     }
-
-    this.UpdateCurrentFramePreview();
 
     this.DrawGrid();
   }
@@ -504,12 +512,32 @@ class Canvas
       }
     }
 
-    await this.UpdateCurrentFramePreview();
     this.DrawGrid();
+  }
+
+  async SavePNG()
+  {
+    const frame = this.frameCache.currentFrame;
+
+    for(var i = 0; i < this.frameCache.frames.length; i++)
+    {
+      this.frameCache.SetCurrentFrame(i);
+      this.Draw();
+      let a = document.createElement('a');
+      a.href = this.c.toDataURL();
+      a.download = `${document.getElementById("inputSpriteName").value}_${this.frameCache.currentFrame}.png`;
+      a.click();
+
+      await Tools.Sleep(100);
+    }
+
+    this.frameCache.SetCurrentFrame(frame);
   }
 
   async UpdateCurrentFramePreview()
   {
+    if(this.nocache)
+      return;
     return new Promise(resolve =>
       {
         let img = new Image();
@@ -523,7 +551,13 @@ class Canvas
           this.frameCache.UpdatePreview(this.preview.toDataURL());
           resolve();
         };
+
+        const grid = this.toggleGrid.checked;
+        this.toggleGrid.checked = false;
+        this.Draw();
         img.src = this.c.toDataURL();
+        this.toggleGrid.checked = grid;
+        this.Draw();
       });
   }
 
@@ -532,7 +566,7 @@ class Canvas
     if(this.toggleGrid.checked)
     {
       const alpha = this.ctx.globalAlpha;
-      this.ctx.globalAlpha = parseFloat(this.gridAlpha.value);
+      this.ctx.globalAlpha = 1;
       this.ctx.drawImage(this.grid, 0, 0);
       this.ctx.globalAlpha = alpha;
     }

@@ -40,9 +40,11 @@ class FrameCache
     let leftGreater = left > right;
     let min = Math.min(left, right), max = Math.max(left, right);
     if(min < 0 || max < 0 || min >= this.frames.length || max >= this.frames.length){
+      console.log(min, max, this.frames.length);
       alert('One or more of the given frame indices is invalid.');
       return;
     }
+    console.log("B");
 
     const li = (leftGreater ? max : min);
     const ri = (leftGreater ? min + 1 : max);
@@ -106,18 +108,27 @@ class FrameCache
     this.frames.splice(index, 0, newFrame);
 
     const button = Tools.AddUIInput(
-      { type: 'image', src: this.canvas.c.toDataURL(), class: 'preview', id: index, style: `width: ${Constants.PREVIEW_SIZE}px; height: ${Constants.PREVIEW_SIZE}px;` },
+      { type: 'image', src: this.canvas.c.toDataURL(), class: 'preview', id: index, style: `width: ${this.canvas.spritewidth * Constants.PREVIEW_SIZE}px; height: ${this.canvas.spriteheight * Constants.PREVIEW_SIZE}px;` },
       { click: (async e =>
         {
           this.SetCurrentFrame(parseInt(e.target.id));
           if(this.canvas.initialized)
+          {
             await this.canvas.Draw();
+            await this.canvas.UpdateCurrentFramePreview();
+          }
         }).bind(this)
-      },
-      { draggable: true }
+      }
     );
     this.display.splice(index, 0, Tools.InsertPreview(button, this.display[index]));
     await button.click();
+
+    for(var i = index + 1; i < this.display.length; i++)
+      this.display[i].id = parseInt(this.display[i].id) + 1;
+
+
+    document.getElementById('buttonFrameSwap').addEventListener('click', this.SwapFrames.bind(this));
+
 
     return this.GetCurrentFrame();
   }
@@ -132,12 +143,12 @@ class FrameCache
     }
   }
 
-  RemoveFrame(e)
+  RemoveFrame(e, override = false)
   {
     if(this.frames.length === 1)
       return;
 
-    if(confirm('Delete the current frame? YOU CANNOT UNDO THIS.'))
+    if(override || confirm('Delete the current frame? YOU CANNOT UNDO THIS.'))
     {
       this.frames.splice(this.currentFrame, 1);
       Constants.PREVIEW_DIV.removeChild(this.display[this.currentFrame]);
@@ -148,6 +159,8 @@ class FrameCache
 
       this.AdvanceCurrentFrame(-1);
       this.canvas.Draw();
+
+      document.getElementById('buttonFrameSwap').addEventListener('click', this.SwapFrames.bind(this));
     }
   }
 
@@ -156,8 +169,31 @@ class FrameCache
     this.display[this.currentFrame].setAttribute('src', url);
   }
 
+  UpdatePreviews()
+  {
+    const start = this.currentFrame;
+    const grid = this.canvas.toggleGrid.checked;
+    this.canvas.toggleGrid.checked = false;
+
+    for(var i = 0; i < this.frames.length; i++)
+    {
+      this.SelectFrame(i);
+      this.canvas.Draw();
+      this.canvas.UpdateCurrentFramePreview();
+    }
+
+    this.canvas.toggleGrid.checked = grid;
+    this.currentFrame = start;
+  }
+
   Resize(w, h)
   {
     this.frames.forEach(f => f.Resize(w, h));
+    for(var i = 0; i < this.display.length; i++)
+    {
+      let d = this.display[i];
+      d.style.width = `${w / Constants.PIXELS_PER_SIDE * Constants.PREVIEW_SIZE}px`;
+      d.style.height = `${h / Constants.PIXELS_PER_SIDE * Constants.PREVIEW_SIZE}px`;
+    }
   }
 }
