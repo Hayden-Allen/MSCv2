@@ -550,6 +550,8 @@
 
         if(canvas.MouseInBounds(self.mouse))
           await canvas.UpdateCurrentFramePreview();
+
+        canvas.selectRectStart = undefined;
       }, { canvas: c });
 
       // drag/color select

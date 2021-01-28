@@ -413,17 +413,20 @@ class Canvas
       if(this.selectMode.value == Constants.SELECT_RECT)
       {
         if(this.selectRectStart === undefined)
+        {
           this.selectRectStart = { x, y };
+          cf.MergeSelection();
+        }
         else
         {
-          this.GetCurrentFrame().SelectRect(this.selectRectStart, { x, y });
+          cf.SelectRect(this.selectRectStart, { x, y });
           this.Draw();
         }
       }
       else
-        this.GetCurrentFrame().SelectPixel(x, y);
+        cf.SelectPixel(x, y);
 
-      const color = this.GetCurrentFrame().selected.grid[y][x];
+      const color = cf.selected.grid[y][x];
       if(color !== Constants.COLOR_CLEAR)
         this.DrawPixel(x, y, this.paletteCache.currentPalette.At(color).inverseHex, .75);
       return;

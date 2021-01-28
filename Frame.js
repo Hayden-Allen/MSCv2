@@ -110,6 +110,7 @@ class Frame
 
   SelectRect(start, end)
   {
+    this.MergeSelection();
     const xmin = Math.min(start.x, end.x), xmax = Math.max(start.x, end.x);
     const ymin = Math.min(start.y, end.y), ymax = Math.max(start.y, end.y);
 
